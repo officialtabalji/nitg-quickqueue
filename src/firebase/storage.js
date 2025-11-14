@@ -31,22 +31,42 @@ export const deleteImage = async (imageUrl) => {
     // Extract the path from the full URL
     // Firebase Storage URLs typically look like:
     // https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fto%2Fimage?alt=media&token=...
+    // Or: https://firebasestorage.googleapis.com/v0/b/bucket.appspot.com/o/path%2Fto%2Fimage?alt=media&token=...
+    
+    let decodedPath = '';
+    
+    // Method 1: Try to extract from standard Firebase Storage URL format
     const urlParts = imageUrl.split('/');
     const pathIndex = urlParts.findIndex(part => part === 'o');
     
-    if (pathIndex === -1 || pathIndex === urlParts.length - 1) {
-      console.warn('Could not extract path from image URL:', imageUrl);
-      return;
+    if (pathIndex !== -1 && pathIndex < urlParts.length - 1) {
+      const encodedPath = urlParts[pathIndex + 1];
+      decodedPath = decodeURIComponent(encodedPath.split('?')[0]);
+    } else {
+      // Method 2: Try to extract from gs:// or other formats
+      // If it's already a path (starts with 'menu/'), use it directly
+      if (imageUrl.startsWith('menu/')) {
+        decodedPath = imageUrl;
+      } else {
+        // Try to find the path after the bucket name
+        const bucketMatch = imageUrl.match(/\/o\/([^?]+)/);
+        if (bucketMatch) {
+          decodedPath = decodeURIComponent(bucketMatch[1]);
+        } else {
+          console.warn('Could not extract path from image URL:', imageUrl);
+          return;
+        }
+      }
     }
     
-    const encodedPath = urlParts[pathIndex + 1];
-    const decodedPath = decodeURIComponent(encodedPath.split('?')[0]);
-    
-    const imageRef = ref(storage, decodedPath);
-    await deleteObject(imageRef);
+    if (decodedPath) {
+      const imageRef = ref(storage, decodedPath);
+      await deleteObject(imageRef);
+    }
   } catch (error) {
     console.error('Error deleting image:', error);
     // Don't throw - image deletion failure shouldn't break the flow
+    // The image might already be deleted or the URL format might be different
   }
 };
 
