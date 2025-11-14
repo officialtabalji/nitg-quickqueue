@@ -75,12 +75,12 @@ const PaymentModal = ({ cart, totalAmount, onClose }) => {
         // Show success message
         toast.success('Payment successful! Order placed.');
         
-        // Close modal first (unmount it)
+        // Close modal first (unmount it) - this prevents any popup from showing
         onClose();
         
-        // Immediately redirect to menu page (home page)
+        // Immediately redirect to live queue tracking page
         // Use replace: true to prevent back navigation to payment modal
-        navigate('/', { replace: true });
+        navigate('/live-queue', { replace: true });
       } else {
         console.error('Payment failed:', paymentResult.error);
         toast.error(paymentResult.error || 'Payment failed');
