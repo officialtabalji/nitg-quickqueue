@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useOrder } from '../hooks/useOrder';
+import { useOrderLive } from '../hooks/useOrderLive';
 import OrderCard from '../components/OrderCard';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Hash, Clock } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 
@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 const OrderStatus = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { order, loading, error } = useOrder(orderId);
+  const { order, loading, error } = useOrderLive(orderId);
   const hasAnnouncedReady = useRef(false);
 
   // Speech synthesis alert when order becomes ready
@@ -133,6 +133,25 @@ const OrderStatus = () => {
           </p>
         </div>
       </div>
+
+      {/* Queue Number - Big & Bold */}
+      {order.queueNumber && (
+        <div className="mb-6 p-6 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg">
+          <div className="flex items-center justify-center space-x-3">
+            <Hash className="w-8 h-8" />
+            <div className="text-center">
+              <p className="text-sm font-medium opacity-90 mb-1">Your Queue Number</p>
+              <p className="text-5xl font-bold">{order.queueNumber}</p>
+            </div>
+          </div>
+          {order.estimatedTime && (
+            <div className="mt-4 flex items-center justify-center space-x-2 text-sm opacity-90">
+              <Clock className="w-4 h-4" />
+              <span>Estimated wait time: {order.estimatedTime} minutes</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Status Message */}
       <div className={`mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md ${statusInfo.color}`}>
