@@ -341,3 +341,6 @@ For issues and questions, please open an issue on the repository.
 
 **Built with ❤️ for NITG Campus**
 
+---
+*Last updated: November 15, 2025*
+
