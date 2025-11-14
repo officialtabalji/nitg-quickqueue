@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { createOrder } from '../../firebase/orders';
+import { createOrder, confirmPayment, markPaymentFailed } from '../../firebase/orders';
 import { processPayment } from '../../utils/razorpay';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '../../utils/helpers';
@@ -64,25 +64,55 @@ const PaymentModal = ({ cart, totalAmount, onClose }) => {
         }
         hasNavigated.current = true;
         
-        console.log('Payment successful! Clearing cart and navigating...');
+        console.log('Payment successful! Confirming payment and assigning queue number...');
         
-        // Payment successful - update order with payment details
-        // This would typically be done via a Cloud Function
-        
-        // Clear the cart immediately
-        clearCart();
-        
-        // Show success message
-        toast.success('Payment successful! Order placed.');
-        
-        // Close modal first (unmount it) - this prevents any popup from showing
-        onClose();
-        
-        // Immediately redirect to live queue tracking page
-        // Use replace: true to prevent back navigation to payment modal
-        navigate('/live-queue', { replace: true });
+        // Confirm payment and assign queue number + ETA
+        try {
+          const confirmResult = await confirmPayment(orderResult.orderId);
+          
+          if (confirmResult.success) {
+            console.log('Payment confirmed! Queue number:', confirmResult.queueNumber);
+            
+            // Clear the cart immediately
+            clearCart();
+            
+            // Show success message
+            toast.success(`Payment successful! Your queue number is #${confirmResult.queueNumber}`);
+            
+            // Close modal first (unmount it) - this prevents any popup from showing
+            onClose();
+            
+            // Small delay to ensure Firestore update is processed
+            setTimeout(() => {
+              // Redirect to order status page to see queue number
+              navigate(`/order-status/${orderResult.orderId}`, { replace: true });
+            }, 500);
+          } else {
+            console.error('Payment confirmation failed:', confirmResult.error);
+            // Payment succeeded but confirmation failed - mark payment as failed
+            await markPaymentFailed(orderResult.orderId);
+            toast.error('Payment succeeded but order confirmation failed. Please contact support.');
+            setLoading(false);
+            hasNavigated.current = false;
+          }
+        } catch (confirmError) {
+          console.error('Error confirming payment:', confirmError);
+          // Payment succeeded but confirmation error - mark payment as failed
+          await markPaymentFailed(orderResult.orderId);
+          toast.error('Payment succeeded but order confirmation failed. Please contact support.');
+          setLoading(false);
+          hasNavigated.current = false;
+        }
       } else {
         console.error('Payment failed:', paymentResult.error);
+        // Mark payment as failed in Firestore
+        if (orderResult.orderId) {
+          try {
+            await markPaymentFailed(orderResult.orderId);
+          } catch (error) {
+            console.error('Error marking payment as failed:', error);
+          }
+        }
         toast.error(paymentResult.error || 'Payment failed');
         setLoading(false);
       }
