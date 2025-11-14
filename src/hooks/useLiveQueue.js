@@ -26,10 +26,8 @@ export const useLiveQueue = (options = {}) => {
 
     // Timeout fallback - if loading takes too long, stop loading
     const loadingTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn('Live Queue: Loading timeout - setting loading to false');
-        setLoading(false);
-      }
+      console.warn('Live Queue: Loading timeout - forcing loading to false');
+      setLoading(false);
     }, 10000); // 10 second timeout
 
     // Subscribe to real-time updates
