@@ -16,8 +16,32 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "your-app-id"
 };
 
+// Validate Firebase config
+const hasValidConfig = firebaseConfig.apiKey && 
+  firebaseConfig.apiKey !== "your-api-key" &&
+  firebaseConfig.projectId && 
+  firebaseConfig.projectId !== "your-project-id";
+
+if (!hasValidConfig) {
+  console.error('⚠️ Firebase configuration is missing or invalid!');
+  console.error('Please set the following environment variables:');
+  console.error('- VITE_FIREBASE_API_KEY');
+  console.error('- VITE_FIREBASE_AUTH_DOMAIN');
+  console.error('- VITE_FIREBASE_PROJECT_ID');
+  console.error('- VITE_FIREBASE_STORAGE_BUCKET');
+  console.error('- VITE_FIREBASE_MESSAGING_SENDER_ID');
+  console.error('- VITE_FIREBASE_APP_ID');
+}
+
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+  console.log('✅ Firebase initialized successfully');
+} catch (error) {
+  console.error('❌ Firebase initialization failed:', error);
+  throw new Error('Failed to initialize Firebase. Please check your configuration.');
+}
 
 // Initialize services
 export const auth = getAuth(app);
