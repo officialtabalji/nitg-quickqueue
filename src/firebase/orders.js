@@ -241,21 +241,6 @@ export const updateOrderStatus = async (orderId, status) => {
   }
 };
 
-// Get a single order by ID
-export const getOrderById = async (orderId) => {
-  try {
-    const orderRef = doc(db, 'orders', orderId);
-    const orderDoc = await getDoc(orderRef);
-    if (orderDoc.exists()) {
-      return { id: orderDoc.id, ...orderDoc.data() };
-    }
-    return null;
-  } catch (error) {
-    console.error('Error fetching order:', error);
-    return null;
-  }
-};
-
 // Real-time listener for a single order
 export const subscribeToOrder = (orderId, callback) => {
   const orderRef = doc(db, 'orders', orderId);
