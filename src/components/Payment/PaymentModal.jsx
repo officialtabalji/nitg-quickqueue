@@ -52,7 +52,8 @@ const PaymentModal = ({ cart, totalAmount, onClose, onSuccess }) => {
         // Update order with payment details
         // This would typically be done via a Cloud Function
         toast.success('Payment successful! Order placed.');
-        onSuccess();
+        setLoading(false); // Reset loading state
+        onSuccess(); // Close modal and navigate
       } else {
         toast.error(paymentResult.error || 'Payment failed');
         setLoading(false);
