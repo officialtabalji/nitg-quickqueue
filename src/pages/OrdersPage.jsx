@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { subscribeToUserOrders } from '../firebase/orders';
 import { formatDate, formatRelativeTime, getStatusColor, getStatusIcon } from '../utils/helpers';
 import { formatCurrency } from '../utils/helpers';
-import { Clock, Package } from 'lucide-react';
+import { Clock, Package, Hash, ArrowRight } from 'lucide-react';
 
 const OrdersPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,28 +58,49 @@ const OrdersPage = () => {
             className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-              <div>
-                <div className="flex items-center space-x-2 mb-2">
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Order #{order.id.slice(0, 8)}
                   </span>
+                  {order.queueNumber && (
+                    <div className="flex items-center space-x-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full">
+                      <Hash className="w-4 h-4" />
+                      <span className="text-sm font-bold">Queue #{order.queueNumber}</span>
+                    </div>
+                  )}
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                      order.orderStatus
+                      order.status || order.orderStatus
                     )}`}
                   >
-                    {getStatusIcon(order.orderStatus)} {order.orderStatus.toUpperCase()}
+                    {getStatusIcon(order.status || order.orderStatus)} {(order.status || order.orderStatus || 'pending').toUpperCase().replace('_', ' ')}
                   </span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Clock className="w-4 h-4" />
-                  <span>{formatRelativeTime(order.createdAt)}</span>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center space-x-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{formatRelativeTime(order.createdAt)}</span>
+                  </div>
+                  {order.estimatedTime && (
+                    <div className="flex items-center space-x-1">
+                      <Clock className="w-4 h-4" />
+                      <span>ETA: {order.estimatedTime} min</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="mt-2 sm:mt-0">
+              <div className="mt-2 sm:mt-0 flex items-center space-x-4">
                 <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
                   {formatCurrency(order.totalAmount)}
                 </span>
+                <button
+                  onClick={() => navigate(`/order-status/${order.id}`)}
+                  className="flex items-center space-x-1 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                >
+                  <span className="text-sm font-medium">View Details</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
@@ -103,7 +126,11 @@ const OrdersPage = () => {
             {order.paymentStatus && (
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Payment: <span className="font-semibold">{order.paymentStatus}</span>
+                  Payment: <span className={`font-semibold ${
+                    order.paymentStatus === 'paid' ? 'text-green-600 dark:text-green-400' :
+                    order.paymentStatus === 'pending' ? 'text-yellow-600 dark:text-yellow-400' :
+                    'text-red-600 dark:text-red-400'
+                  }`}>{order.paymentStatus.toUpperCase()}</span>
                 </span>
               </div>
             )}

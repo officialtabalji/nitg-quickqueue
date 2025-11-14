@@ -22,6 +22,7 @@ import OrdersPage from './pages/OrdersPage';
 import FavoritesPage from './pages/FavoritesPage';
 import OrderStatus from './pages/OrderStatus';
 import LiveQueue from './pages/LiveQueue';
+import MockPayment from './pages/MockPayment';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MenuManagement from './pages/admin/MenuManagement';
 import OrdersManagement from './pages/admin/OrdersManagement';
@@ -62,7 +63,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <CartProvider>
-          <Router>
+          <Router future={{ v7_startTransition: true }}>
             <Toaster position="top-right" />
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -96,6 +97,7 @@ function App() {
                         <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
                         <Route path="/order-status/:orderId" element={<OrderStatus />} />
                         <Route path="/live-queue" element={<LiveQueue />} />
+                        <Route path="/mock-payment" element={<MockPayment />} />
                         <Route path="/orders" element={<OrdersPage />} />
                         <Route path="/favorites" element={<FavoritesPage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />

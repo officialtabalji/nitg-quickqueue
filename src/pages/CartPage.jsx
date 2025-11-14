@@ -1,11 +1,64 @@
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
+import { createOrder } from '../firebase/orders';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 const CartPage = () => {
-  const { cart, updateQuantity, removeFromCart, getTotalPrice } = useCart();
+  const { cart, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
+  const { user } = useAuth();
+  const [processing, setProcessing] = useState(false);
   const navigate = useNavigate();
+
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      toast.error('Please login to place an order');
+      navigate('/login');
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      // Prepare order data
+      const orderData = {
+        userId: user.uid,
+        items: cart.map(item => ({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        totalAmount: getTotalPrice()
+      };
+
+      // Create order in Firestore
+      const result = await createOrder(orderData);
+
+      if (result.success) {
+        // Redirect to mock payment page with order data
+        navigate('/mock-payment', {
+          state: {
+            orderId: result.orderId,
+            order: orderData
+          }
+        });
+      } else {
+        toast.error('Failed to create order. Please try again.');
+        setProcessing(false);
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast.error('An error occurred. Please try again.');
+      setProcessing(false);
+    }
+  };
 
   if (cart.length === 0) {
     return (
@@ -93,10 +146,11 @@ const CartPage = () => {
             </span>
           </div>
           <button
-            onClick={() => navigate('/checkout')}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            onClick={handlePlaceOrder}
+            disabled={processing}
+            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
-            Proceed to Checkout
+            {processing ? 'Processing...' : 'Place Order'}
           </button>
         </div>
       </div>
