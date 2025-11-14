@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -28,12 +28,12 @@ import MenuManagement from './pages/admin/MenuManagement';
 import OrdersManagement from './pages/admin/OrdersManagement';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
 
-const AppLayout = ({ children }) => {
+const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
 
   if (!user) {
-    return children;
+    return <Outlet />;
   }
 
   return (
@@ -42,7 +42,7 @@ const AppLayout = ({ children }) => {
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <main className="flex-1 overflow-y-auto">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>
@@ -86,26 +86,25 @@ function App() {
               
               {/* Student Routes - Use regular ProtectedRoute and AppLayout */}
               <Route
-                path="/*"
                 element={
                   <ProtectedRoute>
-                    <AppLayout>
-                      <Routes>
-                        <Route path="/" element={<MenuPage />} />
-                        <Route path="/cart" element={<CartPage />} />
-                        <Route path="/checkout" element={<CheckoutPage />} />
-                        <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
-                        <Route path="/order-status/:orderId" element={<OrderStatus />} />
-                        <Route path="/live-queue" element={<LiveQueue />} />
-                        <Route path="/mock-payment" element={<MockPayment />} />
-                        <Route path="/orders" element={<OrdersPage />} />
-                        <Route path="/favorites" element={<FavoritesPage />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                      </Routes>
-                    </AppLayout>
+                    <AppLayout />
                   </ProtectedRoute>
                 }
-              />
+              >
+                <Route path="/" element={<MenuPage />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
+                <Route path="/order-status/:orderId" element={<OrderStatus />} />
+                <Route path="/live-queue" element={<LiveQueue />} />
+                <Route path="/mock-payment" element={<MockPayment />} />
+                <Route path="/orders" element={<OrdersPage />} />
+                <Route path="/favorites" element={<FavoritesPage />} />
+              </Route>
+              
+              {/* Catch-all route for 404 - redirect to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Router>
         </CartProvider>

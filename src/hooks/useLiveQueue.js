@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Custom hook to subscribe to live queue of all orders
@@ -17,6 +18,16 @@ export const useLiveQueue = (options = {}) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Check if user is authenticated before subscribing
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+      setError('Authentication required');
+      setLoading(false);
+      return;
+    }
+
     // Create query for orders collection
     // Order by queueNumber ascending to show queue order (1, 2, 3...)
     let ordersQuery = query(
@@ -50,8 +61,14 @@ export const useLiveQueue = (options = {}) => {
         setLoading(false);
       },
       (err) => {
-        console.error('Error subscribing to live queue:', err);
-        setError(err.message);
+        // Handle permission errors gracefully
+        if (err.code === 'permission-denied') {
+          console.warn('Permission denied for live queue. User may need to login.');
+          setError('Authentication required to view live queue');
+        } else {
+          console.error('Error subscribing to live queue:', err);
+          setError(err.message);
+        }
         setLoading(false);
       }
     );

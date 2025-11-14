@@ -319,9 +319,22 @@ export const subscribeToAllOrders = (callback) => {
   const ordersRef = collection(db, 'orders');
   const q = query(ordersRef, orderBy('createdAt', 'desc'));
   
-  return onSnapshot(q, (snapshot) => {
-    const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    callback(orders);
-  });
+  return onSnapshot(
+    q, 
+    (snapshot) => {
+      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(orders);
+    },
+    (error) => {
+      // Handle permission errors gracefully
+      if (error.code === 'permission-denied') {
+        console.warn('Permission denied for all orders. Admin access required.');
+        callback([]);
+      } else {
+        console.error('Error in all orders subscription:', error);
+        callback([]);
+      }
+    }
+  );
 };
 

@@ -28,11 +28,23 @@ export const AuthProvider = ({ children }) => {
         
         // Subscribe to user document for real-time updates
         const userDocRef = doc(db, 'users', currentUser.uid);
-        const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
-          if (doc.exists()) {
-            setUserData(doc.data());
+        const unsubscribeUser = onSnapshot(
+          userDocRef, 
+          (doc) => {
+            if (doc.exists()) {
+              setUserData(doc.data());
+            } else {
+              // User document doesn't exist yet, set empty data
+              setUserData(null);
+            }
+          },
+          (error) => {
+            // Handle permission errors gracefully
+            console.warn('Error fetching user data:', error);
+            setUserData(null);
+            setLoading(false);
           }
-        });
+        );
         
         setLoading(false);
         return () => unsubscribeUser();
