@@ -1,30 +1,14 @@
-import { useState, useEffect } from 'react';
-import { subscribeToAllOrders, updateOrderStatus } from '../../firebase/orders';
+import { useState } from 'react';
+import { useOrdersLive } from '../../hooks/useOrdersLive';
+import { updateOrderStatus } from '../../firebase/orders';
 import { formatDate, formatRelativeTime, getStatusColor } from '../../utils/helpers';
 import { formatCurrency } from '../../utils/helpers';
 import { CheckCircle, Clock, Package, ArrowRight, CreditCard, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const OrdersManagement = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { orders, loading } = useOrdersLive();
   const [updatingId, setUpdatingId] = useState(null);
-
-  useEffect(() => {
-    // Subscribe to all orders for admin to see everything
-    const unsubscribe = subscribeToAllOrders((ordersData) => {
-      // Sort by createdAt (oldest first) for queue order
-      const sortedOrders = [...ordersData].sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-        return dateA - dateB;
-      });
-      setOrders(sortedOrders);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     setUpdatingId(orderId);

@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrder } from '../hooks/useOrder';
 import OrderCard from '../components/OrderCard';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Hash, Clock } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 
@@ -133,6 +133,25 @@ const OrderStatus = () => {
           </p>
         </div>
       </div>
+
+      {/* Queue Number - Big & Bold */}
+      {order.queueNumber && (
+        <div className="mb-6 p-6 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg">
+          <div className="flex items-center justify-center space-x-3">
+            <Hash className="w-8 h-8" />
+            <div className="text-center">
+              <p className="text-sm font-medium opacity-90 mb-1">Your Queue Number</p>
+              <p className="text-5xl font-bold">{order.queueNumber}</p>
+            </div>
+          </div>
+          {order.estimatedTime && (
+            <div className="mt-4 flex items-center justify-center space-x-2 text-sm opacity-90">
+              <Clock className="w-4 h-4" />
+              <span>Estimated wait time: {order.estimatedTime} minutes</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Status Message - Green highlight when Ready */}
       <div className={`mb-6 p-4 rounded-lg shadow-md transition-all ${

@@ -1,175 +1,228 @@
-import { useState, useEffect } from 'react';
-import { subscribeToAllOrders, getActiveOrders } from '../../firebase/orders';
-import { formatCurrency, formatDate } from '../../utils/helpers';
-import { ShoppingBag, Users, DollarSign, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { useOrdersLive } from '../../hooks/useOrdersLive';
+import { updateOrderStatus } from '../../firebase/orders';
+import { formatCurrency, formatRelativeTime, getStatusColor } from '../../utils/helpers';
+import { CheckCircle, Clock, Package, Hash, CreditCard, ArrowRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const AdminDashboard = () => {
-  const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({
-    totalOrders: 0,
-    activeOrders: 0,
-    totalRevenue: 0,
-    avgOrderValue: 0
+  const { orders, loading } = useOrdersLive();
+  const [updatingId, setUpdatingId] = useState(null);
+
+  // Filter orders by status
+  const newOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'new' || status === 'placed';
   });
 
-  useEffect(() => {
-    const unsubscribe = subscribeToAllOrders((ordersData) => {
-      setOrders(ordersData);
-      calculateStats(ordersData);
-    });
+  const preparingOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'preparing';
+  });
 
-    return () => unsubscribe();
-  }, []);
+  const readyOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'ready';
+  });
 
-  const calculateStats = (ordersData) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const completedOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'completed' || status === 'picked';
+  });
 
-    const todayOrders = ordersData.filter(order => {
-      const orderDate = order.createdAt?.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
-      return orderDate >= today;
-    });
-
-    const activeOrders = ordersData.filter(
-      order => order.orderStatus === 'placed' || order.orderStatus === 'preparing'
-    );
-
-    const totalRevenue = todayOrders.reduce((sum, order) => {
-      return sum + (order.totalAmount || 0);
-    }, 0);
-
-    const avgOrderValue = todayOrders.length > 0
-      ? totalRevenue / todayOrders.length
-      : 0;
-
-    setStats({
-      totalOrders: todayOrders.length,
-      activeOrders: activeOrders.length,
-      totalRevenue,
-      avgOrderValue
-    });
+  const handleStatusUpdate = async (orderId, newStatus) => {
+    setUpdatingId(orderId);
+    try {
+      const result = await updateOrderStatus(orderId, newStatus);
+      if (result.success) {
+        toast.success(`Order status updated to ${newStatus}!`);
+      } else {
+        toast.error('Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error('An error occurred');
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
-  const statCards = [
-    {
-      title: 'Today\'s Orders',
-      value: stats.totalOrders,
-      icon: ShoppingBag,
-      color: 'bg-blue-500'
-    },
-    {
-      title: 'Active Orders',
-      value: stats.activeOrders,
-      icon: Clock,
-      color: 'bg-yellow-500'
-    },
-    {
-      title: 'Today\'s Revenue',
-      value: formatCurrency(stats.totalRevenue),
-      icon: DollarSign,
-      color: 'bg-green-500'
-    },
-    {
-      title: 'Avg Order Value',
-      value: formatCurrency(stats.avgOrderValue),
-      icon: Users,
-      color: 'bg-purple-500'
-    }
-  ];
+  const OrderCard = ({ order }) => {
+    const status = order.status || order.orderStatus;
+    const isUpdating = updatingId === order.id;
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-3 border-l-4 border-primary-500">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            {order.queueNumber && (
+              <div className="flex items-center space-x-1 mb-1">
+                <Hash className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                  Queue #{order.queueNumber}
+                </span>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Order #{order.id.slice(0, 8)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold text-gray-900 dark:text-white">
+              {formatCurrency(order.totalAmount || 0)}
+            </p>
+            {order.estimatedTime && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                ETA: {order.estimatedTime} min
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            {formatRelativeTime(order.createdAt)}
+          </p>
+          {order.paymentStatus && (
+            <span
+              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                order.paymentStatus === 'paid'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+              }`}
+            >
+              <CreditCard className="w-3 h-3" />
+              <span>{order.paymentStatus.toUpperCase()}</span>
+            </span>
+          )}
+        </div>
+
+        {order.items && order.items.length > 0 && (
+          <div className="mb-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Items:
+            </p>
+            <div className="space-y-0.5">
+              {order.items.slice(0, 3).map((item, idx) => (
+                <p key={idx} className="text-xs text-gray-600 dark:text-gray-400">
+                  {item.name} × {item.quantity}
+                </p>
+              ))}
+              {order.items.length > 3 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  +{order.items.length - 3} more
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+          {status === 'new' || status === 'placed' ? (
+            <button
+              onClick={() => handleStatusUpdate(order.id, 'preparing')}
+              disabled={isUpdating}
+              className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              <Clock className="w-4 h-4" />
+              <span>Start Preparing</span>
+            </button>
+          ) : status === 'preparing' ? (
+            <button
+              onClick={() => handleStatusUpdate(order.id, 'ready')}
+              disabled={isUpdating}
+              className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span>Mark Ready</span>
+            </button>
+          ) : status === 'ready' ? (
+            <button
+              onClick={() => handleStatusUpdate(order.id, 'completed')}
+              disabled={isUpdating}
+              className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span>Complete</span>
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  const Column = ({ title, orders, color, icon: Icon }) => (
+    <div className="flex-1 min-w-[280px]">
+      <div className={`${color} rounded-t-lg p-4 flex items-center justify-between`}>
+        <div className="flex items-center space-x-2">
+          <Icon className="w-5 h-5 text-white" />
+          <h3 className="text-lg font-bold text-white">{title}</h3>
+        </div>
+        <span className="bg-white/20 text-white px-3 py-1 rounded-full text-sm font-bold">
+          {orders.length}
+        </span>
+      </div>
+      <div className="bg-gray-100 dark:bg-gray-800 rounded-b-lg p-4 min-h-[400px] max-h-[600px] overflow-y-auto">
+        {orders.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No orders</p>
+          </div>
+        ) : (
+          orders.map((order) => <OrderCard key={order.id} order={order} />)
+        )}
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-        Dashboard Overview
-      </h1>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={index}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                    {stat.title}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {stat.value}
-                  </p>
-                </div>
-                <div className={`${stat.color} p-3 rounded-lg`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Live Queue Dashboard
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          Real-time order tracking - Drag orders between columns or use buttons to update status
+        </p>
       </div>
 
-      {/* Recent Orders */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          Recent Orders
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Order ID
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Status
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Amount
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Time
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.slice(0, 10).map((order) => (
-                <tr
-                  key={order.id}
-                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
-                    #{order.id.slice(0, 8)}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        order.orderStatus === 'ready'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : order.orderStatus === 'preparing'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                      }`}
-                    >
-                      {order.orderStatus}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(order.totalAmount)}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(order.createdAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Column Layout */}
+      <div className="flex flex-col lg:flex-row gap-4 overflow-x-auto">
+        <Column
+          title="NEW"
+          orders={newOrders}
+          color="bg-blue-500"
+          icon={Package}
+        />
+        <Column
+          title="PREPARING"
+          orders={preparingOrders}
+          color="bg-yellow-500"
+          icon={Clock}
+        />
+        <Column
+          title="READY"
+          orders={readyOrders}
+          color="bg-green-500"
+          icon={CheckCircle}
+        />
+        <Column
+          title="COMPLETED"
+          orders={completedOrders.slice(0, 20)}
+          color="bg-gray-500"
+          icon={CheckCircle}
+        />
       </div>
     </div>
   );
 };
 
 export default AdminDashboard;
-

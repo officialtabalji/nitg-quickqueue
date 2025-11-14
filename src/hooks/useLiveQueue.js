@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { getAuth } from 'firebase/auth';
 
 /**
  * Custom hook to subscribe to live queue of all orders
@@ -18,27 +17,16 @@ export const useLiveQueue = (options = {}) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Check if user is authenticated before subscribing
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    
-    if (!currentUser) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
-    }
-
     // Create query for orders collection
-    // Order by queueNumber ascending to show queue order (1, 2, 3...)
+    // Filter by paid orders only (they have queue numbers)
+    // Note: We can't use orderBy('queueNumber') directly because:
+    // 1. Some orders might not have queueNumber yet
+    // 2. Firestore requires an index for orderBy
+    // So we'll fetch paid orders and sort client-side
     let ordersQuery = query(
       collection(db, 'orders'),
-      orderBy('queueNumber', 'asc')
+      where('paymentStatus', '==', 'paid')
     );
-
-    // If status filter is provided, add where clause
-    // Note: Firestore requires composite index for multiple where clauses
-    // For now, we'll filter in memory if status is provided
-    // In production, you might want to create a composite index
 
     // Subscribe to real-time updates using onSnapshot
     // onSnapshot automatically updates whenever any order in the query changes
@@ -53,8 +41,19 @@ export const useLiveQueue = (options = {}) => {
 
         // Filter by status in memory if provided
         if (options.status) {
-          ordersData = ordersData.filter(order => order.orderStatus === options.status);
+          ordersData = ordersData.filter(order => {
+            const status = order.status || order.orderStatus;
+            return status === options.status;
+          });
         }
+
+        // Filter to only show orders with queue numbers (active orders)
+        ordersData = ordersData.filter(order => order.queueNumber && typeof order.queueNumber === 'number');
+
+        // Sort by queueNumber ascending (1, 2, 3...)
+        ordersData.sort((a, b) => {
+          return a.queueNumber - b.queueNumber;
+        });
 
         setOrders(ordersData);
         setError(null);
