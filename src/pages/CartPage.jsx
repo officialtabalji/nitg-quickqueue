@@ -2,12 +2,9 @@ import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
-import PaymentModal from '../components/Payment/PaymentModal';
-import { useState } from 'react';
 
 const CartPage = () => {
-  const { cart, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
-  const [showPayment, setShowPayment] = useState(false);
+  const { cart, updateQuantity, removeFromCart, getTotalPrice } = useCart();
   const navigate = useNavigate();
 
   if (cart.length === 0) {
@@ -96,26 +93,13 @@ const CartPage = () => {
             </span>
           </div>
           <button
-            onClick={() => setShowPayment(true)}
+            onClick={() => navigate('/checkout')}
             className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Proceed to Checkout
           </button>
         </div>
       </div>
-
-      {showPayment && (
-        <PaymentModal
-          cart={cart}
-          totalAmount={getTotalPrice()}
-          onClose={() => setShowPayment(false)}
-          onSuccess={() => {
-            clearCart();
-            setShowPayment(false);
-            navigate('/orders');
-          }}
-        />
-      )}
     </div>
   );
 };

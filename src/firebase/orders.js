@@ -2,29 +2,80 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   query,
   where,
   orderBy,
   onSnapshot,
-  Timestamp
+  runTransaction,
+  Timestamp,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from './config';
 
-// Create a new order
+// Create a new order with transaction-based queue number
 export const createOrder = async (orderData) => {
   try {
-    const ordersRef = collection(db, 'orders');
-    const docRef = await addDoc(ordersRef, {
-      ...orderData,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+    // Use transaction to generate unique queue number
+    const result = await runTransaction(db, async (transaction) => {
+      // Get or create counter document
+      const counterRef = doc(db, 'meta', 'counters');
+      const counterDoc = await transaction.get(counterRef);
+      
+      let queueNumber;
+      if (!counterDoc.exists()) {
+        // Initialize counter if it doesn't exist
+        queueNumber = 1;
+        transaction.set(counterRef, { orderCounter: 1 });
+      } else {
+        // Increment counter
+        queueNumber = (counterDoc.data().orderCounter || 0) + 1;
+        transaction.update(counterRef, { orderCounter: queueNumber });
+      }
+
+      // Create order document
+      const ordersRef = collection(db, 'orders');
+      const orderDocRef = doc(ordersRef);
+      
+      const orderDataWithQueue = {
+        ...orderData,
+        queueNumber,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      transaction.set(orderDocRef, orderDataWithQueue);
+
+      // Create duplicate in user's orders subcollection
+      const userOrdersRef = collection(db, 'users', orderData.userId, 'orders');
+      const userOrderDocRef = doc(userOrdersRef, orderDocRef.id);
+      transaction.set(userOrderDocRef, orderDataWithQueue);
+
+      return { orderId: orderDocRef.id, queueNumber };
     });
-    return { success: true, orderId: docRef.id };
+
+    return { success: true, orderId: result.orderId, queueNumber: result.queueNumber };
   } catch (error) {
     console.error('Error creating order:', error);
     return { success: false, error: error.message };
+  }
+};
+
+// Get order by ID
+export const getOrderById = async (orderId) => {
+  try {
+    const orderRef = doc(db, 'orders', orderId);
+    const orderDoc = await getDoc(orderRef);
+    
+    if (orderDoc.exists()) {
+      return { id: orderDoc.id, ...orderDoc.data() };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    return null;
   }
 };
 

@@ -12,6 +12,8 @@ import { useState } from 'react';
 import Login from './components/Auth/Login';
 import MenuPage from './pages/MenuPage';
 import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
+import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrdersPage from './pages/OrdersPage';
 import FavoritesPage from './pages/FavoritesPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -58,6 +60,8 @@ function App() {
                         {/* Student Routes */}
                         <Route path="/" element={<MenuPage />} />
                         <Route path="/cart" element={<CartPage />} />
+                        <Route path="/checkout" element={<CheckoutPage />} />
+                        <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
                         <Route path="/orders" element={<OrdersPage />} />
                         <Route path="/favorites" element={<FavoritesPage />} />
                         

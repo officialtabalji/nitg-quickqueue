@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from './config';
 
 // Get all menu items
@@ -32,7 +32,7 @@ export const addMenuItem = async (itemData) => {
     const menuRef = collection(db, 'menu');
     const docRef = await addDoc(menuRef, {
       ...itemData,
-      createdAt: new Date()
+      createdAt: Timestamp.now()
     });
     return { success: true, id: docRef.id };
   } catch (error) {
@@ -47,7 +47,7 @@ export const updateMenuItem = async (itemId, itemData) => {
     const menuRef = doc(db, 'menu', itemId);
     await updateDoc(menuRef, {
       ...itemData,
-      updatedAt: new Date()
+      updatedAt: Timestamp.now()
     });
     return { success: true };
   } catch (error) {
@@ -72,11 +72,29 @@ export const deleteMenuItem = async (itemId) => {
 export const toggleItemAvailability = async (itemId, available) => {
   try {
     const menuRef = doc(db, 'menu', itemId);
-    await updateDoc(menuRef, { available, updatedAt: new Date() });
+    await updateDoc(menuRef, { available, updatedAt: Timestamp.now() });
     return { success: true };
   } catch (error) {
     console.error('Error toggling availability:', error);
     return { success: false, error: error.message };
+  }
+};
+
+// Subscribe to menu items in real-time (for admin)
+export const subscribeToMenuItems = (callback) => {
+  try {
+    const menuRef = collection(db, 'menu');
+    const unsubscribe = onSnapshot(menuRef, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(items);
+    }, (error) => {
+      console.error('Error in menu subscription:', error);
+      callback([]);
+    });
+    return unsubscribe;
+  } catch (error) {
+    console.error('Error setting up menu subscription:', error);
+    return () => {};
   }
 };
 
