@@ -187,12 +187,18 @@ const LiveQueue = () => {
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center mb-8">
           <Package className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg">
+          <p className="text-gray-500 dark:text-gray-400 text-lg mb-2">
             No orders in the queue yet
           </p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-            Orders will appear here as they are placed
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+            Orders will appear here after payment is confirmed
           </p>
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Note:</strong> Make sure to complete payment for your order. 
+              Once payment is confirmed, your order will appear here with a queue number.
+            </p>
+          </div>
         </div>
       )}
     </div>

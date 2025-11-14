@@ -46,18 +46,34 @@ export const useLiveQueue = (options = {}) => {
             id: o.id,
             paymentStatus: o.paymentStatus,
             queueNumber: o.queueNumber,
-            status: o.status || o.orderStatus
+            status: o.status || o.orderStatus,
+            createdAt: o.createdAt
           })));
 
           // Filter to only show paid orders with queue numbers
+          // Also include orders that are 'new' or 'placed' status (they should have queue numbers after payment)
           const beforeFilter = ordersData.length;
           ordersData = ordersData.filter(order => {
             const isPaid = order.paymentStatus === 'paid';
             const hasQueueNumber = order.queueNumber && typeof order.queueNumber === 'number';
-            return isPaid && hasQueueNumber;
+            const hasValidStatus = ['new', 'placed', 'preparing', 'ready'].includes(order.status || order.orderStatus);
+            
+            // Show if: paid AND has queue number AND valid status
+            const shouldShow = isPaid && hasQueueNumber && hasValidStatus;
+            
+            if (!shouldShow && isPaid) {
+              console.log('Live Queue: Filtered out order', order.id, {
+                isPaid,
+                hasQueueNumber,
+                status: order.status || order.orderStatus,
+                queueNumber: order.queueNumber
+              });
+            }
+            
+            return shouldShow;
           });
 
-          console.log('Live Queue: After filter (paid + queueNumber):', ordersData.length, 'out of', beforeFilter);
+          console.log('Live Queue: After filter (paid + queueNumber + valid status):', ordersData.length, 'out of', beforeFilter);
 
           // Filter by status in memory if provided
           if (options.status) {
