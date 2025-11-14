@@ -3,67 +3,110 @@ const admin = require('firebase-admin');
 
 admin.initializeApp();
 
-// Send notification when order status changes
+/**
+ * Cloud Function: Send FCM Push Notification when Order Status becomes "Ready"
+ * 
+ * Triggered when an order document is updated in Firestore
+ * Sends push notification if:
+ * - Previous status was NOT "ready"
+ * - New status IS "ready"
+ * - Device token exists (from order.deviceToken or user document)
+ * 
+ * To deploy:
+ * 1. Install Firebase CLI: npm install -g firebase-tools
+ * 2. Login: firebase login
+ * 3. Initialize: firebase init functions
+ * 4. Deploy: firebase deploy --only functions
+ * 
+ * To add FCM server key:
+ * 1. Go to Firebase Console > Project Settings > Cloud Messaging
+ * 2. Copy Server Key (for legacy) or use Service Account JSON
+ * 3. The function uses firebase-admin which auto-authenticates
+ */
 exports.onOrderStatusUpdate = functions.firestore
   .document('orders/{orderId}')
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
 
-    // Only send notification if status changed
-    if (before.orderStatus === after.orderStatus) {
-      return null;
-    }
-
-    const userId = after.userId;
+    const previousStatus = before.status || before.orderStatus;
+    const newStatus = after.status || after.orderStatus;
     const orderId = context.params.orderId;
-    const newStatus = after.orderStatus;
+    const queueNumber = after.queueNumber;
 
-    // Get user's FCM token
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    const fcmToken = userDoc.data()?.fcmToken;
-
-    if (!fcmToken) {
-      console.log('No FCM token for user:', userId);
+    // Only send notification when status changes to "Ready"
+    // Check: new status is "ready" AND previous status was NOT "ready"
+    if (newStatus !== 'ready' || previousStatus === 'ready') {
+      console.log('Status not changed to ready, skipping notification');
       return null;
     }
 
-    // Prepare notification message
-    let title = 'Order Update';
-    let body = '';
+    // Get device token from order document first, fallback to user document
+    let deviceToken = after.deviceToken;
 
-    switch (newStatus) {
-      case 'preparing':
-        title = 'Order Being Prepared';
-        body = `Your order #${orderId.slice(0, 8)} is now being prepared!`;
-        break;
-      case 'ready':
-        title = 'Order Ready for Pickup!';
-        body = `Your order #${orderId.slice(0, 8)} is ready for pickup.`;
-        break;
-      default:
-        body = `Your order status has been updated to ${newStatus}`;
+    if (!deviceToken && after.userId) {
+      // Fallback: get token from user document
+      const userDoc = await admin.firestore().collection('users').doc(after.userId).get();
+      deviceToken = userDoc.data()?.deviceToken || userDoc.data()?.fcmToken;
     }
 
+    if (!deviceToken) {
+      console.log('No device token found for order:', orderId);
+      return null;
+    }
+
+    // Prepare FCM notification message
     const message = {
       notification: {
-        title: title,
-        body: body
+        title: '🎉 Order Ready for Pickup!',
+        body: `Your order #${queueNumber || orderId.slice(0, 8)} is ready for pickup.`
       },
       data: {
         orderId: orderId,
+        queueNumber: queueNumber?.toString() || '',
         status: newStatus,
-        type: 'order_update'
+        type: 'order_ready',
+        click_action: 'FLUTTER_NOTIFICATION_CLICK' // For mobile apps
       },
-      token: fcmToken
+      token: deviceToken,
+      // Optional: Add Android and iOS specific config
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          channelId: 'order_updates'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1
+          }
+        }
+      }
     };
 
     try {
-      await admin.messaging().send(message);
-      console.log('Notification sent successfully');
+      // Send notification using firebase-admin messaging
+      const response = await admin.messaging().send(message);
+      console.log('FCM notification sent successfully:', response);
       return null;
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error('Error sending FCM notification:', error);
+      
+      // If token is invalid, remove it from user document
+      if (error.code === 'messaging/invalid-registration-token' || 
+          error.code === 'messaging/registration-token-not-registered') {
+        console.log('Invalid token, removing from user document');
+        if (after.userId) {
+          await admin.firestore().collection('users').doc(after.userId).update({
+            deviceToken: admin.firestore.FieldValue.delete(),
+            fcmToken: admin.firestore.FieldValue.delete()
+          });
+        }
+      }
+      
       return null;
     }
   });

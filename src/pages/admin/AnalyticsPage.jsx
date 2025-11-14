@@ -77,6 +77,29 @@ const AnalyticsPage = () => {
         .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     });
 
+    // Orders by hour (today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayOrders = orders.filter(order => {
+      const orderDate = order.createdAt?.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+      return orderDate >= today && orderDate < tomorrow;
+    });
+
+    const ordersByHour = Array.from({ length: 24 }, (_, hour) => {
+      return todayOrders.filter(order => {
+        const orderDate = order.createdAt?.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+        return orderDate.getHours() === hour;
+      }).length;
+    });
+
+    const hourLabels = Array.from({ length: 24 }, (_, i) => {
+      const hour = i.toString().padStart(2, '0');
+      return `${hour}:00`;
+    });
+
     // Popular items
     const itemCounts = {};
     orders.forEach(order => {
@@ -89,11 +112,23 @@ const AnalyticsPage = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
+    // Today's stats
+    const todayStats = {
+      totalOrders: todayOrders.length,
+      totalRevenue: todayOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+      avgOrderValue: todayOrders.length > 0
+        ? todayOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0) / todayOrders.length
+        : 0
+    };
+
     return {
       ordersByDay,
       revenueByDay,
       popularItems,
-      last7Days
+      last7Days,
+      ordersByHour,
+      hourLabels,
+      todayStats
     };
   };
 
@@ -105,7 +140,7 @@ const AnalyticsPage = () => {
     );
   }
 
-  const { ordersByDay, revenueByDay, popularItems, last7Days } = processData();
+  const { ordersByDay, revenueByDay, popularItems, last7Days, ordersByHour, hourLabels, todayStats } = processData();
 
   const ordersChartData = {
     labels: last7Days,
@@ -150,6 +185,20 @@ const AnalyticsPage = () => {
     ]
   };
 
+  const ordersByHourData = {
+    labels: hourLabels,
+    datasets: [
+      {
+        label: 'Orders',
+        data: ordersByHour,
+        backgroundColor: 'rgba(139, 92, 246, 0.5)',
+        borderColor: 'rgba(139, 92, 246, 1)',
+        borderWidth: 2,
+        tension: 0.4
+      }
+    ]
+  };
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -163,9 +212,34 @@ const AnalyticsPage = () => {
 
   return (
     <div className="p-4 lg:p-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-        Analytics Dashboard
-      </h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Analytics Dashboard
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          Real-time insights and performance metrics
+        </p>
+      </div>
+
+      {/* Today's Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Today's Orders</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{todayStats.totalOrders}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Today's Revenue</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {formatCurrency(todayStats.totalRevenue)}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Avg Order Value</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {formatCurrency(todayStats.avgOrderValue)}
+          </p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Orders Chart */}
@@ -186,6 +260,16 @@ const AnalyticsPage = () => {
           <div className="h-64">
             <Line data={revenueChartData} options={chartOptions} />
           </div>
+        </div>
+      </div>
+
+      {/* Orders by Hour */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          Orders by Hour (Today)
+        </h2>
+        <div className="h-64">
+          <Line data={ordersByHourData} options={chartOptions} />
         </div>
       </div>
 

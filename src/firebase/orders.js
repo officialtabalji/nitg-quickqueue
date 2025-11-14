@@ -39,8 +39,13 @@ export const createOrder = async (orderData) => {
       const ordersRef = collection(db, 'orders');
       const orderDocRef = doc(ordersRef);
       
+      // Ensure status field is set (use orderStatus if status not provided for backward compatibility)
+      const status = orderData.status || orderData.orderStatus || 'placed';
+      
       const orderDataWithQueue = {
         ...orderData,
+        status, // Use "status" as primary field
+        orderStatus: status, // Keep orderStatus for backward compatibility
         queueNumber,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -131,7 +136,8 @@ export const updateOrderStatus = async (orderId, status) => {
   try {
     const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, {
-      orderStatus: status,
+      status, // Primary field
+      orderStatus: status, // Keep for backward compatibility
       updatedAt: Timestamp.now()
     });
     return { success: true };

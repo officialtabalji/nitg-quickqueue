@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/Layout/ProtectedRoute';
+import AdminRoute from './routes/AdminRoute';
+import AdminLayout from './components/admin/AdminLayout';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import { useState, useEffect } from 'react';
@@ -18,6 +20,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrdersPage from './pages/OrdersPage';
 import FavoritesPage from './pages/FavoritesPage';
+import OrderStatus from './pages/OrderStatus';
+import LiveQueue from './pages/LiveQueue';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MenuManagement from './pages/admin/MenuManagement';
 import OrdersManagement from './pages/admin/OrdersManagement';
@@ -62,54 +66,38 @@ function App() {
             <Toaster position="top-right" />
             <Routes>
               <Route path="/login" element={<Login />} />
+              
+              {/* Admin Routes - Completely separated with AdminRoute and AdminLayout */}
+              <Route
+                path="/admin/*"
+                element={
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                }
+              >
+                <Route path="" element={<AdminDashboard />} />
+                <Route path="menu" element={<MenuManagement />} />
+                <Route path="orders" element={<OrdersManagement />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="*" element={<Navigate to="/admin" replace />} />
+              </Route>
+              
+              {/* Student Routes - Use regular ProtectedRoute and AppLayout */}
               <Route
                 path="/*"
                 element={
                   <ProtectedRoute>
                     <AppLayout>
                       <Routes>
-                        {/* Student Routes */}
                         <Route path="/" element={<MenuPage />} />
                         <Route path="/cart" element={<CartPage />} />
                         <Route path="/checkout" element={<CheckoutPage />} />
                         <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
+                        <Route path="/order-status/:orderId" element={<OrderStatus />} />
+                        <Route path="/live-queue" element={<LiveQueue />} />
                         <Route path="/orders" element={<OrdersPage />} />
                         <Route path="/favorites" element={<FavoritesPage />} />
-                        
-                        {/* Admin Routes */}
-                        <Route
-                          path="/admin"
-                          element={
-                            <ProtectedRoute requireAdmin>
-                              <AdminDashboard />
-                            </ProtectedRoute>
-                          }
-                        />
-                        <Route
-                          path="/admin/menu"
-                          element={
-                            <ProtectedRoute requireAdmin>
-                              <MenuManagement />
-                            </ProtectedRoute>
-                          }
-                        />
-                        <Route
-                          path="/admin/orders"
-                          element={
-                            <ProtectedRoute requireAdmin>
-                              <OrdersManagement />
-                            </ProtectedRoute>
-                          }
-                        />
-                        <Route
-                          path="/admin/analytics"
-                          element={
-                            <ProtectedRoute requireAdmin>
-                              <AnalyticsPage />
-                            </ProtectedRoute>
-                          }
-                        />
-                        
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </AppLayout>
