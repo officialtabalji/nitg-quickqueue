@@ -2,6 +2,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   updateProfile
@@ -40,26 +42,64 @@ export const signIn = async (email, password) => {
   }
 };
 
-// Sign in with Google
+// Sign in with Google (using redirect for better compatibility)
 export const signInWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-    
-    // Check if user document exists
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (!userDoc.exists()) {
-      // Create user document if it doesn't exist
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        role: 'student',
-        createdAt: Timestamp.now()
-      });
+    // Try popup first, fallback to redirect if blocked
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      // Check if user document exists
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        // Create user document if it doesn't exist
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          role: 'student',
+          createdAt: Timestamp.now()
+        });
+      }
+      
+      return { success: true, user };
+    } catch (popupError) {
+      // If popup is blocked, use redirect
+      if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, googleProvider);
+        return { success: true, redirect: true };
+      }
+      throw popupError;
     }
-    
-    return { success: true, user };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Handle redirect result (call this on app load)
+export const handleGoogleRedirect = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result && result.user) {
+      const user = result.user;
+      
+      // Check if user document exists
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        // Create user document if it doesn't exist
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          role: 'student',
+          createdAt: Timestamp.now()
+        });
+      }
+      
+      return { success: true, user };
+    }
+    return { success: false };
   } catch (error) {
     return { success: false, error: error.message };
   }

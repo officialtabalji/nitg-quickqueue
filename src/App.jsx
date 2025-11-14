@@ -6,7 +6,9 @@ import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/Layout/ProtectedRoute';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { handleGoogleRedirect } from './firebase/auth';
+import toast from 'react-hot-toast';
 
 // Pages
 import Login from './components/Auth/Login';
@@ -43,6 +45,15 @@ const AppLayout = ({ children }) => {
 };
 
 function App() {
+  // Handle Google redirect on app load
+  useEffect(() => {
+    handleGoogleRedirect().then((result) => {
+      if (result.success && result.user) {
+        toast.success('Logged in with Google!');
+      }
+    });
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
