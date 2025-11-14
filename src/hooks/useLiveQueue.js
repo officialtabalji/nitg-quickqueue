@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { getAuth } from 'firebase/auth';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * Custom hook to subscribe to live queue of all orders
@@ -16,29 +16,27 @@ export const useLiveQueue = (options = {}) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      return;
+    }
+
     // Check if user is authenticated before subscribing
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    
-    if (!currentUser) {
+    if (!user) {
       setError('Authentication required');
       setLoading(false);
       return;
     }
 
     // Create query for orders collection
-    // Order by queueNumber ascending to show queue order (1, 2, 3...)
-    let ordersQuery = query(
-      collection(db, 'orders'),
-      orderBy('queueNumber', 'asc')
-    );
-
-    // If status filter is provided, add where clause
-    // Note: Firestore requires composite index for multiple where clauses
-    // For now, we'll filter in memory if status is provided
-    // In production, you might want to create a composite index
+    // Note: We can't use orderBy('queueNumber') directly because:
+    // 1. Some orders might not have queueNumber yet
+    // 2. Firestore requires an index for orderBy
+    // So we'll fetch all orders and sort client-side
+    let ordersQuery = query(collection(db, 'orders'));
 
     // Subscribe to real-time updates using onSnapshot
     // onSnapshot automatically updates whenever any order in the query changes
@@ -53,8 +51,26 @@ export const useLiveQueue = (options = {}) => {
 
         // Filter by status in memory if provided
         if (options.status) {
-          ordersData = ordersData.filter(order => order.orderStatus === options.status);
+          ordersData = ordersData.filter(order => {
+            const status = order.status || order.orderStatus;
+            return status === options.status;
+          });
         }
+
+        // Sort by queueNumber ascending (orders with queueNumber first, then by createdAt)
+        ordersData.sort((a, b) => {
+          // If both have queueNumber, sort by queueNumber
+          if (a.queueNumber && b.queueNumber) {
+            return a.queueNumber - b.queueNumber;
+          }
+          // If only one has queueNumber, prioritize it
+          if (a.queueNumber && !b.queueNumber) return -1;
+          if (!a.queueNumber && b.queueNumber) return 1;
+          // Fallback to createdAt
+          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+          return aTime - bTime;
+        });
 
         setOrders(ordersData);
         setError(null);
@@ -75,7 +91,7 @@ export const useLiveQueue = (options = {}) => {
 
     // Cleanup: unsubscribe when component unmounts
     return () => unsubscribe();
-  }, [options.status]);
+  }, [options.status, user, authLoading]);
 
   return { orders, loading, error };
 };
