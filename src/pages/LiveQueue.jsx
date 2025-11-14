@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useLiveQueue } from '../hooks/useLiveQueue';
 import { formatRelativeTime, getStatusColor } from '../utils/helpers';
 import { formatCurrency } from '../utils/helpers';
@@ -12,6 +13,11 @@ import { ArrowLeft, Loader2, RefreshCw, Hash, Clock, CheckCircle, Package } from
 const LiveQueue = () => {
   const navigate = useNavigate();
   const { orders, loading, error } = useLiveQueue();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('LiveQueue component state:', { orders: orders.length, loading, error });
+  }, [orders, loading, error]);
 
   // Filter orders by status for better organization
   const newOrders = orders.filter(order => {
