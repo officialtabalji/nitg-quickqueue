@@ -53,14 +53,19 @@ const Login = () => {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
+        if (result.redirect) {
+          // Redirect is happening, don't show error
+          toast.loading('Redirecting to Google...');
+          return;
+        }
         toast.success('Logged in with Google!');
         navigate('/');
       } else {
         toast.error(result.error || 'Google sign-in failed');
+        setLoading(false);
       }
     } catch (error) {
       toast.error('An error occurred. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
