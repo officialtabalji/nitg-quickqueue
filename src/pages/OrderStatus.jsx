@@ -19,6 +19,7 @@ const OrderStatus = () => {
   // Speech synthesis alert when order becomes ready
   useEffect(() => {
     const currentStatus = order?.status || order?.orderStatus;
+    
     if (currentStatus === 'ready' && !hasAnnouncedReady.current) {
       hasAnnouncedReady.current = true;
       
@@ -48,7 +49,6 @@ const OrderStatus = () => {
     }
 
     // Reset announcement flag if order status changes back
-    const currentStatus = order?.status || order?.orderStatus;
     if (currentStatus !== 'ready') {
       hasAnnouncedReady.current = false;
     }
