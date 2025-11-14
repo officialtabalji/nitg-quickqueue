@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -13,6 +13,7 @@ const PaymentModal = ({ cart, totalAmount, onClose }) => {
   const { clearCart } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const hasNavigated = useRef(false);
 
   const handlePayment = async () => {
     if (!user) {
@@ -46,34 +47,42 @@ const PaymentModal = ({ cart, totalAmount, onClose }) => {
       }
 
       // Process payment with Razorpay
+      console.log('Starting Razorpay payment...');
       const paymentResult = await processPayment(
         totalAmount,
         orderResult.orderId,
         userData
       );
 
+      console.log('Payment result:', paymentResult);
+
       if (paymentResult.success) {
+        // Prevent multiple navigations
+        if (hasNavigated.current) {
+          console.log('Already navigated, skipping...');
+          return;
+        }
+        hasNavigated.current = true;
+        
+        console.log('Payment successful! Clearing cart and navigating...');
+        
         // Payment successful - update order with payment details
         // This would typically be done via a Cloud Function
         
         // Clear the cart immediately
         clearCart();
         
-        // Reset loading state
-        setLoading(false);
+        // Show success message
+        toast.success('Payment successful! Order placed.');
         
         // Close modal first (unmount it)
         onClose();
         
-        // Show success message
-        toast.success('Payment successful! Order placed.');
-        
         // Immediately redirect to menu page (home page)
-        // Using setTimeout to ensure modal is fully closed before navigation
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 100);
+        // Use replace: true to prevent back navigation to payment modal
+        navigate('/', { replace: true });
       } else {
+        console.error('Payment failed:', paymentResult.error);
         toast.error(paymentResult.error || 'Payment failed');
         setLoading(false);
       }
