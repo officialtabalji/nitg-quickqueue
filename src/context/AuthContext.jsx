@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthChange, getUserRole } from '../firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { requestNotificationPermission } from '../utils/notifications';
 
 const AuthContext = createContext();
 
@@ -25,6 +26,12 @@ export const AuthProvider = ({ children }) => {
       if (currentUser) {
         // Get user role and data from Firestore
         const role = await getUserRole(currentUser.uid);
+        
+        // Request notification permission and save FCM token
+        // This happens after login, so we have the user ID
+        requestNotificationPermission(currentUser.uid).catch(error => {
+          console.error('Error setting up notifications:', error);
+        });
         
         // Subscribe to user document for real-time updates
         const userDocRef = doc(db, 'users', currentUser.uid);

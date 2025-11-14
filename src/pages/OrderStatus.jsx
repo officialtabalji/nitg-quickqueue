@@ -134,9 +134,18 @@ const OrderStatus = () => {
         </div>
       </div>
 
-      {/* Status Message */}
-      <div className={`mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md ${statusInfo.color}`}>
+      {/* Status Message - Green highlight when Ready */}
+      <div className={`mb-6 p-4 rounded-lg shadow-md transition-all ${
+        currentStatus === 'ready' 
+          ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500 animate-pulse' 
+          : 'bg-white dark:bg-gray-800'
+      } ${statusInfo.color}`}>
         <p className="text-lg font-semibold">{statusInfo.message}</p>
+        {currentStatus === 'ready' && (
+          <p className="text-sm mt-2 text-green-700 dark:text-green-300">
+            🎉 Head to the pickup counter to collect your order!
+          </p>
+        )}
       </div>
 
       {/* Order Card */}
