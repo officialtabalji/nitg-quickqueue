@@ -4,7 +4,8 @@ service cloud.firestore {
     // Users collection
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
     }
     
     // Menu collection - public read, admin write
@@ -46,4 +47,3 @@ service cloud.firestore {
     }
   }
 }
-
