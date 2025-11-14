@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { auth, googleProvider, db } from './config';
 
 // Sign up with email and password
@@ -21,7 +21,7 @@ export const signUp = async (email, password, name) => {
       name: name,
       email: email,
       role: 'student',
-      createdAt: new Date()
+      createdAt: Timestamp.now()
     });
     
     return { success: true, user: userCredential.user };
@@ -55,7 +55,7 @@ export const signInWithGoogle = async () => {
         name: user.displayName,
         email: user.email,
         role: 'student',
-        createdAt: new Date()
+        createdAt: Timestamp.now()
       });
     }
     
