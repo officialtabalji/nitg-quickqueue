@@ -50,13 +50,19 @@ const OrdersManagement = () => {
   }
 
   // Filter orders by status for better organization
-  const activeOrders = orders.filter(
-    order => order.orderStatus === 'placed' || order.orderStatus === 'preparing'
-  );
-  const readyOrders = orders.filter(order => order.orderStatus === 'ready');
-  const completedOrders = orders.filter(
-    order => order.orderStatus === 'picked' || order.orderStatus === 'completed'
-  );
+  // Support both "status" and "orderStatus" fields
+  const activeOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'placed' || status === 'preparing';
+  });
+  const readyOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'ready';
+  });
+  const completedOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'picked' || status === 'completed';
+  });
 
   return (
     <div className="p-4 lg:p-6">
@@ -154,7 +160,7 @@ const OrdersManagement = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {order.orderStatus === 'placed' && (
+                  {((order.status || order.orderStatus) === 'placed') && (
                     <button
                       onClick={() => handleStatusUpdate(order.id, 'preparing')}
                       disabled={updatingId === order.id}
@@ -165,7 +171,7 @@ const OrdersManagement = () => {
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   )}
-                  {order.orderStatus === 'preparing' && (
+                  {((order.status || order.orderStatus) === 'preparing') && (
                     <button
                       onClick={() => handleStatusUpdate(order.id, 'ready')}
                       disabled={updatingId === order.id}

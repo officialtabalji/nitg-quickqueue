@@ -24,7 +24,14 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
-export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+// Initialize Firebase Messaging with service worker registration
+// The service worker must be at /firebase-messaging-sw.js
+export const messaging = typeof window !== 'undefined' 
+  ? getMessaging(app, {
+      // Service worker will be automatically registered at /firebase-messaging-sw.js
+      // Make sure public/firebase-messaging-sw.js exists
+    })
+  : null;
 
 // Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();

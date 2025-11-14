@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useOrderLive } from '../hooks/useOrderLive';
+import { useOrder } from '../hooks/useOrder';
 import OrderCard from '../components/OrderCard';
 import { ArrowLeft, Loader2, AlertCircle, Hash, Clock } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 const OrderStatus = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { order, loading, error } = useOrderLive(orderId);
+  const { order, loading, error } = useOrder(orderId);
   const hasAnnouncedReady = useRef(false);
 
   // Speech synthesis alert when order becomes ready
@@ -153,9 +153,18 @@ const OrderStatus = () => {
         </div>
       )}
 
-      {/* Status Message */}
-      <div className={`mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md ${statusInfo.color}`}>
+      {/* Status Message - Green highlight when Ready */}
+      <div className={`mb-6 p-4 rounded-lg shadow-md transition-all ${
+        currentStatus === 'ready' 
+          ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500 animate-pulse' 
+          : 'bg-white dark:bg-gray-800'
+      } ${statusInfo.color}`}>
         <p className="text-lg font-semibold">{statusInfo.message}</p>
+        {currentStatus === 'ready' && (
+          <p className="text-sm mt-2 text-green-700 dark:text-green-300">
+            🎉 Head to the pickup counter to collect your order!
+          </p>
+        )}
       </div>
 
       {/* Order Card */}
