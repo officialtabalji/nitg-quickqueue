@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
-import { createOrder } from '../firebase/orders';
+import PaymentModal from '../components/Payment/PaymentModal';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 const CartPage = () => {
-  const { cart, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
+  const { cart, updateQuantity, removeFromCart, getTotalPrice } = useCart();
   const { user } = useAuth();
-  const [processing, setProcessing] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const navigate = useNavigate();
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = () => {
     if (!user) {
       toast.error('Please login to place an order');
       navigate('/login');
@@ -25,39 +25,8 @@ const CartPage = () => {
       return;
     }
 
-    setProcessing(true);
-    try {
-      // Prepare order data
-      const orderData = {
-        userId: user.uid,
-        items: cart.map(item => ({
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        })),
-        totalAmount: getTotalPrice()
-      };
-
-      // Create order in Firestore
-      const result = await createOrder(orderData);
-
-      if (result.success) {
-        // Redirect to mock payment page with order data
-        navigate('/mock-payment', {
-          state: {
-            orderId: result.orderId,
-            order: orderData
-          }
-        });
-      } else {
-        toast.error('Failed to create order. Please try again.');
-        setProcessing(false);
-      }
-    } catch (error) {
-      console.error('Error placing order:', error);
-      toast.error('An error occurred. Please try again.');
-      setProcessing(false);
-    }
+    // Show Payment Modal with Razorpay integration
+    setShowPaymentModal(true);
   };
 
   if (cart.length === 0) {
@@ -147,13 +116,21 @@ const CartPage = () => {
           </div>
           <button
             onClick={handlePlaceOrder}
-            disabled={processing}
-            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
-            {processing ? 'Processing...' : 'Place Order'}
+            Pay Now
           </button>
         </div>
       </div>
+
+      {/* Payment Modal - Shows Razorpay payment interface */}
+      {showPaymentModal && (
+        <PaymentModal
+          cart={cart}
+          totalAmount={getTotalPrice()}
+          onClose={() => setShowPaymentModal(false)}
+        />
+      )}
     </div>
   );
 };
