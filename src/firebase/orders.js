@@ -118,13 +118,15 @@ export const getAllOrders = async () => {
 export const getActiveOrders = async () => {
   try {
     const ordersRef = collection(db, 'orders');
-    const q = query(
-      ordersRef,
-      where('orderStatus', 'in', ['placed', 'preparing']),
-      orderBy('createdAt', 'asc')
-    );
+    // Fetch all orders and filter in memory to avoid index requirement
+    const q = query(ordersRef, orderBy('createdAt', 'asc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(order => {
+        const status = order.status || order.orderStatus;
+        return status === 'placed' || status === 'preparing';
+      });
   } catch (error) {
     console.error('Error fetching active orders:', error);
     return [];
@@ -165,15 +167,25 @@ export const subscribeToUserOrders = (userId, callback) => {
 // Real-time listener for active orders (admin)
 export const subscribeToActiveOrders = (callback) => {
   const ordersRef = collection(db, 'orders');
+  // Note: Firestore 'in' queries with orderBy require a composite index
+  // For now, we'll fetch all and filter, or use separate queries
+  // This avoids the index requirement but is less efficient
   const q = query(
     ordersRef,
-    where('orderStatus', 'in', ['placed', 'preparing']),
     orderBy('createdAt', 'asc')
   );
   
   return onSnapshot(q, (snapshot) => {
-    const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const orders = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(order => {
+        const status = order.status || order.orderStatus;
+        return status === 'placed' || status === 'preparing';
+      });
     callback(orders);
+  }, (error) => {
+    console.error('Error in active orders subscription:', error);
+    callback([]);
   });
 };
 
