@@ -138,12 +138,12 @@ const AdminDashboard = () => {
             </button>
           ) : status === 'ready' ? (
             <button
-              onClick={() => handleStatusUpdate(order.id, 'completed')}
+              onClick={() => handleStatusUpdate(order.id, 'picked')}
               disabled={isUpdating}
               className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
             >
-              <CheckCircle className="w-4 h-4" />
-              <span>Complete</span>
+              <Package className="w-4 h-4" />
+              <span>Mark as Picked</span>
             </button>
           ) : null}
         </div>

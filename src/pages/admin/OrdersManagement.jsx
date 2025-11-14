@@ -196,70 +196,98 @@ const OrdersManagement = () => {
             Ready for Pickup ({readyOrders.length})
           </h2>
           <div className="space-y-4">
-            {readyOrders.map((order) => (
-              <div
-                key={order.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-green-500"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
-                  <div>
-                    <div className="flex items-center space-x-2 mb-2 flex-wrap">
-                      <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Queue #{order.queueNumber || 'N/A'}
-                      </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Order ID: #{order.id.slice(0, 8)}
-                      </span>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                          order.orderStatus
-                        )}`}
-                      >
-                        {order.orderStatus.toUpperCase()}
+            {readyOrders.map((order) => {
+              const currentStatus = order.status || order.orderStatus || 'ready';
+              return (
+                <div
+                  key={order.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-green-500"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
+                    <div>
+                      <div className="flex items-center space-x-2 mb-2 flex-wrap">
+                        {order.queueNumber && (
+                          <div className="flex items-center space-x-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full">
+                            <Hash className="w-4 h-4" />
+                            <span className="text-sm font-bold">Queue #{order.queueNumber}</span>
+                          </div>
+                        )}
+                        <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Order #{order.id.slice(0, 8)}
+                        </span>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                            currentStatus
+                          )}`}
+                        >
+                          {currentStatus.toUpperCase()}
+                        </span>
+                        {order.paymentStatus && (
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1 ${
+                              order.paymentStatus === 'paid'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : order.paymentStatus === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            }`}
+                          >
+                            <CreditCard className="w-3 h-3" />
+                            <span>{order.paymentStatus.toUpperCase()}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                        <p>
+                          Created: {formatDate(order.createdAt)} ({formatRelativeTime(order.createdAt)})
+                        </p>
+                        {order.estimatedTime && (
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4" />
+                            <span>ETA: {order.estimatedTime} min</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2 lg:mt-0">
+                      <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                        {formatCurrency(order.totalAmount || 0)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Created: {formatDate(order.createdAt)}
-                    </p>
                   </div>
-                  <div className="mt-2 lg:mt-0">
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      {formatCurrency(order.totalAmount || 0)}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    Items ({order.items?.length || 0}):
-                  </h3>
-                  <div className="space-y-1">
-                    {order.items?.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        <span>
-                          {item.name} × {item.quantity}
-                        </span>
-                        <span>{formatCurrency(item.price * item.quantity)}</span>
-                      </div>
-                    ))}
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                      Items ({order.items?.length || 0}):
+                    </h3>
+                    <div className="space-y-1">
+                      {order.items?.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex justify-between text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          <span>
+                            {item.name} × {item.quantity}
+                          </span>
+                          <span>{formatCurrency(item.price * item.quantity)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      onClick={() => handleStatusUpdate(order.id, 'picked')}
+                      disabled={updatingId === order.id}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Mark as Picked</span>
+                    </button>
                   </div>
                 </div>
-
-                <div className="mt-4">
-                  <button
-                    onClick={() => handleStatusUpdate(order.id, 'picked')}
-                    disabled={updatingId === order.id}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Mark as Picked</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
