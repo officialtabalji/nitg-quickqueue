@@ -16,9 +16,8 @@ service cloud.firestore {
     
     // Orders collection
     match /orders/{orderId} {
-      // Students can read their own orders OR all orders for live queue
-      // Admins can read all orders
       // Allow authenticated users to read all orders for live queue display
+      // This is needed for the live queue feature where students can see all orders
       allow read: if request.auth != null;
       // Students can create orders (must set their own userId)
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;

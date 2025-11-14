@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { subscribeToAllOrders } from '../firebase/orders';
 
 /**
  * Custom hook to subscribe to live queue of all orders
@@ -17,27 +18,16 @@ export const useLiveQueue = (options = {}) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Create query for orders collection
-    // Filter by paid orders only (they have queue numbers)
-    // Note: We can't use orderBy('queueNumber') directly because:
-    // 1. Some orders might not have queueNumber yet
-    // 2. Firestore requires an index for orderBy
-    // So we'll fetch paid orders and sort client-side
-    let ordersQuery = query(
-      collection(db, 'orders'),
-      where('paymentStatus', '==', 'paid')
-    );
-
-    // Subscribe to real-time updates using onSnapshot
-    // onSnapshot automatically updates whenever any order in the query changes
-    // This provides instant updates across all clients viewing the queue
-    const unsubscribe = onSnapshot(
-      ordersQuery,
-      (snapshot) => {
-        let ordersData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+    // Use subscribeToAllOrders which already handles permissions correctly
+    // Then filter for paid orders with queue numbers
+    const unsubscribe = subscribeToAllOrders((allOrders) => {
+      try {
+        // Filter to only show paid orders with queue numbers
+        let ordersData = allOrders.filter(order => 
+          order.paymentStatus === 'paid' && 
+          order.queueNumber && 
+          typeof order.queueNumber === 'number'
+        );
 
         // Filter by status in memory if provided
         if (options.status) {
@@ -47,9 +37,6 @@ export const useLiveQueue = (options = {}) => {
           });
         }
 
-        // Filter to only show orders with queue numbers (active orders)
-        ordersData = ordersData.filter(order => order.queueNumber && typeof order.queueNumber === 'number');
-
         // Sort by queueNumber ascending (1, 2, 3...)
         ordersData.sort((a, b) => {
           return a.queueNumber - b.queueNumber;
@@ -58,19 +45,12 @@ export const useLiveQueue = (options = {}) => {
         setOrders(ordersData);
         setError(null);
         setLoading(false);
-      },
-      (err) => {
-        // Handle permission errors gracefully
-        if (err.code === 'permission-denied') {
-          console.warn('Permission denied for live queue. User may need to login.');
-          setError('Authentication required to view live queue');
-        } else {
-          console.error('Error subscribing to live queue:', err);
-          setError(err.message);
-        }
+      } catch (err) {
+        console.error('Error processing orders:', err);
+        setError(err.message);
         setLoading(false);
       }
-    );
+    });
 
     // Cleanup: unsubscribe when component unmounts
     return () => unsubscribe();
