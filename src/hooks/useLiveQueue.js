@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { subscribeToAllOrders } from '../firebase/orders';
 
 /**
  * Custom hook to subscribe to live queue of all orders
@@ -18,39 +17,60 @@ export const useLiveQueue = (options = {}) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Use subscribeToAllOrders which already handles permissions correctly
-    // Then filter for paid orders with queue numbers
-    const unsubscribe = subscribeToAllOrders((allOrders) => {
-      try {
-        // Filter to only show paid orders with queue numbers
-        let ordersData = allOrders.filter(order => 
-          order.paymentStatus === 'paid' && 
-          order.queueNumber && 
-          typeof order.queueNumber === 'number'
-        );
+    // Query all orders - Firestore rules should allow authenticated users to read
+    // We'll filter client-side for paid orders with queue numbers
+    const ordersRef = collection(db, 'orders');
+    const ordersQuery = query(ordersRef);
 
-        // Filter by status in memory if provided
-        if (options.status) {
-          ordersData = ordersData.filter(order => {
-            const status = order.status || order.orderStatus;
-            return status === options.status;
+    // Subscribe to real-time updates
+    const unsubscribe = onSnapshot(
+      ordersQuery,
+      (snapshot) => {
+        try {
+          let ordersData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+
+          // Filter to only show paid orders with queue numbers
+          ordersData = ordersData.filter(order => 
+            order.paymentStatus === 'paid' && 
+            order.queueNumber && 
+            typeof order.queueNumber === 'number'
+          );
+
+          // Filter by status in memory if provided
+          if (options.status) {
+            ordersData = ordersData.filter(order => {
+              const status = order.status || order.orderStatus;
+              return status === options.status;
+            });
+          }
+
+          // Sort by queueNumber ascending (1, 2, 3...)
+          ordersData.sort((a, b) => {
+            return a.queueNumber - b.queueNumber;
           });
+
+          setOrders(ordersData);
+          setError(null);
+          setLoading(false);
+        } catch (err) {
+          console.error('Error processing orders:', err);
+          setError(err.message);
+          setLoading(false);
         }
-
-        // Sort by queueNumber ascending (1, 2, 3...)
-        ordersData.sort((a, b) => {
-          return a.queueNumber - b.queueNumber;
-        });
-
-        setOrders(ordersData);
-        setError(null);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error processing orders:', err);
-        setError(err.message);
+      },
+      (err) => {
+        console.error('Error subscribing to live queue:', err);
+        if (err.code === 'permission-denied') {
+          setError('Permission denied. Please ensure Firestore rules allow authenticated users to read orders collection.');
+        } else {
+          setError(`Error: ${err.message || 'Failed to load queue'}`);
+        }
         setLoading(false);
       }
-    });
+    );
 
     // Cleanup: unsubscribe when component unmounts
     return () => unsubscribe();
