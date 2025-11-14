@@ -58,6 +58,15 @@ export const confirmPayment = async (orderId) => {
   try {
     const orderRef = doc(db, 'orders', orderId);
     
+    // First, verify the order exists
+    const orderDoc = await getDoc(orderRef);
+    if (!orderDoc.exists()) {
+      console.error('Order does not exist:', orderId);
+      return { success: false, error: 'Order not found' };
+    }
+    
+    console.log('Order found, current data:', orderDoc.data());
+    
     // Calculate queue number and ETA with error handling
     let queueNumber = 1;
     let estimatedTime = 4;
@@ -92,6 +101,13 @@ export const confirmPayment = async (orderId) => {
     }
     
     // Update the order
+    console.log('Updating order with:', {
+      paymentStatus: 'paid',
+      status: 'new',
+      queueNumber,
+      estimatedTime
+    });
+    
     await updateDoc(orderRef, {
       paymentStatus: 'paid',
       status: 'new',
@@ -101,19 +117,28 @@ export const confirmPayment = async (orderId) => {
     });
     
     console.log('Payment confirmed successfully for order:', orderId);
-    console.log('Order updated with:', {
-      paymentStatus: 'paid',
-      status: 'new',
-      queueNumber,
-      estimatedTime
+    
+    // Verify the update was successful by reading the document again
+    const updatedOrderDoc = await getDoc(orderRef);
+    if (!updatedOrderDoc.exists()) {
+      console.error('Order disappeared after update!');
+      return { success: false, error: 'Order not found after update' };
+    }
+    
+    const updatedData = updatedOrderDoc.data();
+    console.log('Verified order after update:', {
+      id: updatedOrderDoc.id,
+      paymentStatus: updatedData.paymentStatus,
+      status: updatedData.status,
+      queueNumber: updatedData.queueNumber,
+      estimatedTime: updatedData.estimatedTime
     });
     
-    // Verify the update was successful
-    const updatedOrder = await getDoc(orderRef);
-    console.log('Verified order after update:', {
-      id: updatedOrder.id,
-      data: updatedOrder.data()
-    });
+    // Double-check that paymentStatus was actually updated
+    if (updatedData.paymentStatus !== 'paid') {
+      console.error('Payment status was not updated correctly! Current status:', updatedData.paymentStatus);
+      return { success: false, error: 'Payment status update failed' };
+    }
     
     return { success: true, queueNumber, estimatedTime };
   } catch (error) {

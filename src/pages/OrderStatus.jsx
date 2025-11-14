@@ -1,8 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrder } from '../hooks/useOrder';
 import OrderCard from '../components/OrderCard';
+import FeedbackForm from '../components/FeedbackForm';
 import { ArrowLeft, Loader2, AlertCircle, Hash, Clock } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { checkFeedbackExists } from '../firebase/feedback';
 import toast from 'react-hot-toast';
 
 /**
@@ -14,7 +17,10 @@ const OrderStatus = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { order, loading, error } = useOrder(orderId);
+  const { user } = useAuth();
   const hasAnnouncedReady = useRef(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [hasCheckedFeedback, setHasCheckedFeedback] = useState(false);
 
   // Speech synthesis alert when order becomes ready
   useEffect(() => {
@@ -53,6 +59,27 @@ const OrderStatus = () => {
       hasAnnouncedReady.current = false;
     }
   }, [order?.status, order?.orderStatus, order?.queueNumber]);
+
+  // Show feedback modal when order status becomes "Picked"
+  useEffect(() => {
+    const currentStatus = order?.status || order?.orderStatus;
+    
+    if (currentStatus === 'picked' && user && !hasCheckedFeedback && orderId) {
+      // Check if feedback already exists for this order
+      checkFeedbackExists(orderId).then((exists) => {
+        setHasCheckedFeedback(true);
+        if (!exists) {
+          // Small delay to ensure user sees the status change first
+          setTimeout(() => {
+            setShowFeedbackModal(true);
+          }, 1000);
+        }
+      }).catch((error) => {
+        console.error('Error checking feedback:', error);
+        setHasCheckedFeedback(true);
+      });
+    }
+  }, [order?.status, order?.orderStatus, user, orderId, hasCheckedFeedback]);
 
   if (loading) {
     return (
@@ -185,6 +212,15 @@ const OrderStatus = () => {
           My Orders
         </button>
       </div>
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && user && (
+        <FeedbackForm
+          userId={user.uid}
+          orderId={orderId}
+          onClose={() => setShowFeedbackModal(false)}
+        />
+      )}
     </div>
   );
 };

@@ -6,6 +6,7 @@ import {
   Menu as MenuIcon,
   ShoppingCart,
   BarChart3,
+  MessageSquare,
   LogOut,
   X,
   Menu as MenuButton
@@ -31,7 +32,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/menu', label: 'Menu Management', icon: MenuIcon },
     { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-    { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 }
+    { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { path: '/admin/feedback', label: 'Feedback', icon: MessageSquare }
   ];
 
   return (

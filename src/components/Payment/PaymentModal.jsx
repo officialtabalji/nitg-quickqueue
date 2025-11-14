@@ -65,10 +65,16 @@ const PaymentModal = ({ cart, totalAmount, onClose }) => {
         hasNavigated.current = true;
         
         console.log('Payment successful! Confirming payment and assigning queue number...');
+        console.log('Order ID:', orderResult.orderId);
+        
+        // Small delay to ensure order document is fully created in Firestore
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // Confirm payment and assign queue number + ETA
         try {
+          console.log('Calling confirmPayment for order:', orderResult.orderId);
           const confirmResult = await confirmPayment(orderResult.orderId);
+          console.log('confirmPayment result:', confirmResult);
           
           if (confirmResult.success) {
             console.log('Payment confirmed! Queue number:', confirmResult.queueNumber);
@@ -89,17 +95,27 @@ const PaymentModal = ({ cart, totalAmount, onClose }) => {
             }, 500);
           } else {
             console.error('Payment confirmation failed:', confirmResult.error);
+            console.error('Full error details:', confirmResult);
             // Payment succeeded but confirmation failed - mark payment as failed
-            await markPaymentFailed(orderResult.orderId);
-            toast.error('Payment succeeded but order confirmation failed. Please contact support.');
+            try {
+              await markPaymentFailed(orderResult.orderId);
+            } catch (markError) {
+              console.error('Failed to mark payment as failed:', markError);
+            }
+            toast.error(`Payment succeeded but order confirmation failed: ${confirmResult.error || 'Unknown error'}. Please contact support.`);
             setLoading(false);
             hasNavigated.current = false;
           }
         } catch (confirmError) {
           console.error('Error confirming payment:', confirmError);
+          console.error('Error stack:', confirmError.stack);
           // Payment succeeded but confirmation error - mark payment as failed
-          await markPaymentFailed(orderResult.orderId);
-          toast.error('Payment succeeded but order confirmation failed. Please contact support.');
+          try {
+            await markPaymentFailed(orderResult.orderId);
+          } catch (markError) {
+            console.error('Failed to mark payment as failed:', markError);
+          }
+          toast.error(`Payment succeeded but order confirmation failed: ${confirmError.message || 'Unknown error'}. Please contact support.`);
           setLoading(false);
           hasNavigated.current = false;
         }

@@ -27,6 +27,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import MenuManagement from './pages/admin/MenuManagement';
 import OrdersManagement from './pages/admin/OrdersManagement';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
+import AdminFeedback from './pages/admin/AdminFeedback';
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -81,6 +82,7 @@ function App() {
                 <Route path="menu" element={<MenuManagement />} />
                 <Route path="orders" element={<OrdersManagement />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="feedback" element={<AdminFeedback />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
               
