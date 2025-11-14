@@ -101,6 +101,20 @@ export const confirmPayment = async (orderId) => {
     });
     
     console.log('Payment confirmed successfully for order:', orderId);
+    console.log('Order updated with:', {
+      paymentStatus: 'paid',
+      status: 'new',
+      queueNumber,
+      estimatedTime
+    });
+    
+    // Verify the update was successful
+    const updatedOrder = await getDoc(orderRef);
+    console.log('Verified order after update:', {
+      id: updatedOrder.id,
+      data: updatedOrder.data()
+    });
+    
     return { success: true, queueNumber, estimatedTime };
   } catch (error) {
     console.error('Error confirming payment:', error);
