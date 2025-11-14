@@ -128,7 +128,9 @@ const CartPage = () => {
         <PaymentModal
           cart={cart}
           totalAmount={getTotalPrice()}
-          onClose={() => setShowPaymentModal(false)}
+          onClose={() => {
+            setShowPaymentModal(false);
+          }}
         />
       )}
     </div>
