@@ -1,13 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import { createOrder } from '../../firebase/orders';
 import { processPayment } from '../../utils/razorpay';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '../../utils/helpers';
 
-const PaymentModal = ({ cart, totalAmount, onClose, onSuccess }) => {
+const PaymentModal = ({ cart, totalAmount, onClose }) => {
   const { user, userData } = useAuth();
+  const { clearCart } = useCart();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const handlePayment = async () => {
@@ -49,11 +53,26 @@ const PaymentModal = ({ cart, totalAmount, onClose, onSuccess }) => {
       );
 
       if (paymentResult.success) {
-        // Update order with payment details
+        // Payment successful - update order with payment details
         // This would typically be done via a Cloud Function
+        
+        // Clear the cart immediately
+        clearCart();
+        
+        // Reset loading state
+        setLoading(false);
+        
+        // Close modal first (unmount it)
+        onClose();
+        
+        // Show success message
         toast.success('Payment successful! Order placed.');
-        setLoading(false); // Reset loading state
-        onSuccess(); // Close modal and navigate
+        
+        // Immediately redirect to menu page (home page)
+        // Using setTimeout to ensure modal is fully closed before navigation
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 100);
       } else {
         toast.error(paymentResult.error || 'Payment failed');
         setLoading(false);
