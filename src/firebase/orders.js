@@ -153,7 +153,6 @@ export const assignEstimatedTime = async (orderId) => {
   } catch (error) {
     console.error('Error assigning estimated time:', error);
     return { success: false, error: error.message };
->>>>>>> Stashed changes
   }
 };
 
@@ -198,16 +197,6 @@ export const getAllOrders = async () => {
 export const getActiveOrders = async () => {
   try {
     const ordersRef = collection(db, 'orders');
-<<<<<<< Updated upstream
-    // Fetch all orders and filter in memory to avoid index requirement
-    const q = query(ordersRef, orderBy('createdAt', 'asc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(order => {
-        const status = order.status || order.orderStatus;
-        return status === 'placed' || status === 'preparing';
-=======
     // Use only paymentStatus filter to avoid composite index requirement
     const q = query(
       ordersRef,
@@ -218,7 +207,10 @@ export const getActiveOrders = async () => {
     // Filter and sort client-side
     return snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(order => ['new', 'preparing', 'ready'].includes(order.status))
+      .filter(order => {
+        const status = order.status || order.orderStatus;
+        return ['new', 'preparing', 'ready', 'placed'].includes(status);
+      })
       .sort((a, b) => {
         if (a.queueNumber && b.queueNumber) {
           return a.queueNumber - b.queueNumber;
@@ -226,7 +218,6 @@ export const getActiveOrders = async () => {
         const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
         const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
         return aTime - bTime;
->>>>>>> Stashed changes
       });
   } catch (error) {
     console.error('Error fetching active orders:', error);
@@ -239,14 +230,9 @@ export const updateOrderStatus = async (orderId, status) => {
   try {
     const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, {
-<<<<<<< Updated upstream
-      status, // Primary field
+      status: status, // Primary field
       orderStatus: status, // Keep for backward compatibility
-      updatedAt: Timestamp.now()
-=======
-      status: status,
       updatedAt: serverTimestamp()
->>>>>>> Stashed changes
     });
     return { success: true };
   } catch (error) {
@@ -311,32 +297,21 @@ export const subscribeToUserOrders = (userId, callback) => {
 // Real-time listener for active orders (admin)
 export const subscribeToActiveOrders = (callback) => {
   const ordersRef = collection(db, 'orders');
-<<<<<<< Updated upstream
-  // Note: Firestore 'in' queries with orderBy require a composite index
-  // For now, we'll fetch all and filter, or use separate queries
-  // This avoids the index requirement but is less efficient
-  const q = query(
-    ordersRef,
-    orderBy('createdAt', 'asc')
-=======
   // Use only paymentStatus filter to avoid composite index requirement
   // We'll filter and sort client-side
   const q = query(
     ordersRef,
     where('paymentStatus', '==', 'paid')
->>>>>>> Stashed changes
   );
   
   return onSnapshot(q, (snapshot) => {
     const orders = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-<<<<<<< Updated upstream
+      // Filter for active statuses client-side
       .filter(order => {
         const status = order.status || order.orderStatus;
-        return status === 'placed' || status === 'preparing';
-=======
-      // Filter for active statuses client-side
-      .filter(order => ['new', 'preparing', 'ready'].includes(order.status))
+        return ['new', 'preparing', 'ready', 'placed'].includes(status);
+      })
       // Sort by queue number if available, otherwise by createdAt
       .sort((a, b) => {
         if (a.queueNumber && b.queueNumber) {
@@ -346,7 +321,6 @@ export const subscribeToActiveOrders = (callback) => {
         const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
         const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
         return aTime - bTime;
->>>>>>> Stashed changes
       });
     callback(orders);
   }, (error) => {
