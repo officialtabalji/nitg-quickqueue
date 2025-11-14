@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useLiveQueue } from '../hooks/useLiveQueue';
-import OrderCard from '../components/OrderCard';
-import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
-import { formatRelativeTime } from '../utils/helpers';
+import { formatRelativeTime, getStatusColor } from '../utils/helpers';
+import { formatCurrency } from '../utils/helpers';
+import { ArrowLeft, Loader2, RefreshCw, Hash, Clock, CheckCircle, Package } from 'lucide-react';
 
 /**
  * LiveQueue Page - Real-time queue list for all orders
- * Shows all orders ordered by queueNumber ascending
+ * Shows all paid orders with queue numbers, ordered by queueNumber ascending
  * Updates in real-time using onSnapshot query
  */
 const LiveQueue = () => {
@@ -14,14 +14,19 @@ const LiveQueue = () => {
   const { orders, loading, error } = useLiveQueue();
 
   // Filter orders by status for better organization
-  // Support both "status" and "orderStatus" fields
-  const activeOrders = orders.filter(order => {
+  const newOrders = orders.filter(order => {
     const status = order.status || order.orderStatus;
-    return status === 'placed' || status === 'preparing' || status === 'ready';
+    return status === 'new' || status === 'placed';
   });
-  const completedOrders = orders.filter(order => {
+
+  const preparingOrders = orders.filter(order => {
     const status = order.status || order.orderStatus;
-    return status === 'picked' || status === 'completed';
+    return status === 'preparing';
+  });
+
+  const readyOrders = orders.filter(order => {
+    const status = order.status || order.orderStatus;
+    return status === 'ready';
   });
 
   if (loading) {
@@ -51,6 +56,69 @@ const LiveQueue = () => {
     );
   }
 
+  const QueueCard = ({ order, index }) => {
+    const status = order.status || order.orderStatus;
+    const statusColors = {
+      'new': 'border-blue-500 bg-blue-50 dark:bg-blue-900/20',
+      'placed': 'border-blue-500 bg-blue-50 dark:bg-blue-900/20',
+      'preparing': 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20',
+      'ready': 'border-green-500 bg-green-50 dark:bg-green-900/20',
+      'completed': 'border-gray-400 bg-gray-50 dark:bg-gray-800',
+    };
+    const borderColor = statusColors[status] || 'border-gray-300 bg-white dark:bg-gray-800';
+
+    return (
+      <div
+        className={`${borderColor} rounded-lg shadow-md p-4 mb-3 border-l-4 cursor-pointer hover:shadow-lg transition-all`}
+        onClick={() => navigate(`/order-status/${order.id}`)}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="flex items-center space-x-2">
+                <Hash className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                  #{order.queueNumber}
+                </span>
+              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}
+              >
+                {status?.toUpperCase() || 'PENDING'}
+              </span>
+            </div>
+            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <div className="flex items-center space-x-1">
+                <Clock className="w-4 h-4" />
+                <span>{formatRelativeTime(order.createdAt)}</span>
+              </div>
+              {order.estimatedTime && (
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-4 h-4" />
+                  <span>ETA: {order.estimatedTime} min</span>
+                </div>
+              )}
+            </div>
+            {order.items && order.items.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Items:</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {order.items.slice(0, 2).map(item => `${item.name} × ${item.quantity}`).join(', ')}
+                  {order.items.length > 2 && ` +${order.items.length - 2} more`}
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold text-gray-900 dark:text-white">
+              {formatCurrency(order.totalAmount || 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -78,82 +146,47 @@ const LiveQueue = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Active Orders</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{activeOrders.length}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total in Queue</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{orders.length}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">In Queue</p>
-          <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-            {orders.filter(o => {
-              const s = o.status || o.orderStatus;
-              return s === 'placed' || s === 'preparing';
-            }).length}
-          </p>
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg shadow-md p-4 border-l-4 border-blue-500">
+          <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">New Orders</p>
+          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{newOrders.length}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Ready</p>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {orders.filter(o => (o.status || o.orderStatus) === 'ready').length}
-          </p>
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+          <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-1">Preparing</p>
+          <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{preparingOrders.length}</p>
+        </div>
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg shadow-md p-4 border-l-4 border-green-500">
+          <p className="text-sm text-green-600 dark:text-green-400 mb-1">Ready</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{readyOrders.length}</p>
         </div>
       </div>
 
-      {/* Active Orders */}
-      {activeOrders.length > 0 ? (
+      {/* Queue List - All orders in queue order */}
+      {orders.length > 0 ? (
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Active Orders ({activeOrders.length})
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
+            <Package className="w-5 h-5" />
+            <span>Queue Order (Sorted by Queue Number)</span>
           </h2>
-          <div className="space-y-4">
-            {activeOrders.map((order) => (
-              <div
-                key={order.id}
-                onClick={() => navigate(`/order-status/${order.id}`)}
-                className="cursor-pointer transition-transform hover:scale-[1.02]"
-              >
-                <OrderCard order={order} compact />
-              </div>
+          <div className="space-y-2">
+            {orders.map((order, index) => (
+              <QueueCard key={order.id} order={order} index={index} />
             ))}
           </div>
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center mb-8">
+          <Package className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <p className="text-gray-500 dark:text-gray-400 text-lg">
-            No active orders in the queue
+            No orders in the queue yet
           </p>
-        </div>
-      )}
-
-      {/* Completed Orders (Collapsed) */}
-      {completedOrders.length > 0 && (
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Recently Completed ({completedOrders.length})
-          </h2>
-          <div className="space-y-2">
-            {completedOrders.slice(0, 5).map((order) => (
-              <div
-                key={order.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 border-l-4 border-gray-400 opacity-75"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
-                      Queue #{order.queueNumber}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-500">
-                      {formatRelativeTime(order.createdAt)}
-                    </span>
-                  </div>
-                  <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
-                    {(order.status || order.orderStatus || 'unknown').toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+            Orders will appear here as they are placed
+          </p>
         </div>
       )}
     </div>
@@ -161,4 +194,3 @@ const LiveQueue = () => {
 };
 
 export default LiveQueue;
-
