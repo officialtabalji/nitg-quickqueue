@@ -43,6 +43,8 @@ export const createRazorpayOrder = async (amount, orderId, userData) => {
       theme: {
         color: '#14b8a6'
       },
+      // Note: Payment methods (including UPI) are controlled by Razorpay Dashboard settings
+      // To enable UPI: Go to Razorpay Dashboard > Settings > Payment Methods > Enable UPI
       modal: {
         ondismiss: function() {
           // Called when user closes the payment modal

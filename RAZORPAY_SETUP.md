@@ -125,8 +125,28 @@ VITE_RAZORPAY_KEY_ID=rzp_test_1DP5mmOlF5G5ag
 - Check browser console for errors
 - Make sure you're using test cards in test mode
 
+**"UPI option not visible"**
+- **Most Common Issue**: UPI needs to be enabled in your Razorpay Dashboard
+- **Steps to Enable UPI:**
+  1. Log in to [Razorpay Dashboard](https://dashboard.razorpay.com)
+  2. Go to **Settings** (⚙️ icon) → **Payment Methods**
+  3. Look for **UPI** in the list of payment methods
+  4. If UPI shows "Request" or is disabled, click on it to enable
+  5. Follow the activation process (may require account verification)
+  6. Wait for activation confirmation (usually instant for test mode, may take time for live mode)
+- **Important Notes:**
+  - Some business categories (like "Individual" or "Not yet Registered") may have restrictions on UPI
+  - UPI is usually enabled by default in test mode
+  - For live mode, you may need to complete KYC verification first
+  - After enabling, refresh your payment page and try again
+- **Test Mode UPI:**
+  - In test mode, UPI transactions are simulated
+  - Use test UPI ID: `success@razorpay` for successful transactions
+  - Use test UPI ID: `failure@razorpay` for failed transactions
+
 ## Need Help?
 
 - Razorpay Documentation: https://razorpay.com/docs/
 - Razorpay Support: https://razorpay.com/support/
+- Payment Methods Settings: https://dashboard.razorpay.com/app/payment-methods
 
