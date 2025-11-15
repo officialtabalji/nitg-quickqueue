@@ -10,7 +10,8 @@ import {
   Menu as MenuIcon,
   BarChart3,
   Users,
-  Heart
+  Heart,
+  Radio
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -32,6 +33,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const studentLinks = [
     { path: '/', label: 'Menu', icon: MenuIcon },
     { path: '/cart', label: 'Cart', icon: ShoppingCart },
+    { path: '/live-queue', label: 'Live Queue', icon: Radio },
     { path: '/orders', label: 'My Orders', icon: History },
     { path: '/favorites', label: 'Favorites', icon: Heart }
   ];

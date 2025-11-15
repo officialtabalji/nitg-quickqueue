@@ -90,8 +90,8 @@ const PaymentModal = ({ cart, totalAmount, onClose }) => {
             
             // Small delay to ensure Firestore update is processed
             setTimeout(() => {
-              // Redirect to order status page to see queue number
-              navigate(`/order-status/${orderResult.orderId}`, { replace: true });
+              // Redirect to live queue tracking system to see all orders
+              navigate(`/live-queue?highlight=${orderResult.orderId}`, { replace: true });
             }, 500);
           } else {
             console.error('Payment confirmation failed:', confirmResult.error);
